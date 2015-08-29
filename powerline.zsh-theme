@@ -1,15 +1,33 @@
 # FreeAgent puts the powerline style in zsh !
 
-ZLE_RPROMPT_INDENT=0
+function rvm_info_for_prompt {
+  if [[ -d ~/.rvm/ ]]; then
+    local ruby_version=$(~/.rvm/bin/rvm-prompt)
+    if [ -n "$ruby_version" ]; then
+      echo "$ruby_version"
+    fi
+  else
+    echo ""
+  fi
+}
+
+RVM_PRECMD_INFO=$(rvm_info_for_prompt)
+rvm_split=("${(s/@/)$(rvm_info_for_prompt)}")
+
+function prompt_sorin_pwd {
+  local pwd="${PWD/#$HOME/~}"
+
+  if [[ "$pwd" == (#m)[/~] ]]; then
+    _prompt_sorin_pwd="$MATCH"
+    unset MATCH
+  else
+    _prompt_sorin_pwd="${${${(@j:/:M)${(@s:/:)pwd}##.#?}:h}%/}/${pwd:t}"
+  fi
+}
+
 
 if [ "$POWERLINE_DATE_FORMAT" = "" ]; then
   POWERLINE_DATE_FORMAT=%D{%Y-%m-%d}
-fi
-
-if [ "$POWERLINE_RIGHT_B" = "" ]; then
-  POWERLINE_RIGHT_B=%D{%H:%M:%S}
-elif [ "$POWERLINE_RIGHT_B" = "none" ]; then
-  POWERLINE_RIGHT_B=""
 fi
 
 if [ "$POWERLINE_RIGHT_A" = "mixed" ]; then
@@ -20,23 +38,25 @@ elif [ "$POWERLINE_RIGHT_A" = "date" ]; then
   POWERLINE_RIGHT_A="$POWERLINE_DATE_FORMAT"
 fi
 
-if [ "$POWERLINE_HIDE_USER_NAME" = "" ] && [ "$POWERLINE_HIDE_HOST_NAME" = "" ]; then
-    POWERLINE_USER_NAME="%n@%M"
-elif [ "$POWERLINE_HIDE_USER_NAME" != "" ] && [ "$POWERLINE_HIDE_HOST_NAME" = "" ]; then
-    POWERLINE_USER_NAME="@%M"
-elif [ "$POWERLINE_HIDE_USER_NAME" = "" ] && [ "$POWERLINE_HIDE_HOST_NAME" != "" ]; then
-    POWERLINE_USER_NAME="%n"
-else
-    POWERLINE_USER_NAME=""
-fi
+POWERLINE_USER_NAME="%n"
 
-POWERLINE_CURRENT_PATH="%d"
+#${PWD/#$HOME/~}
+POWERLINE_CURRENT_PATH=$_prompt_sorin_pwd
+#%~
 
-if [ "$POWERLINE_FULL_CURRENT_PATH" = "" ]; then
-  POWERLINE_CURRENT_PATH="%1~"
-fi
+#if [ "$POWERLINE_FULL_CURRENT_PATH" = "" ]; then
+#  POWERLINE_CURRENT_PATH="%1~"
+#fi
 
-if [ "$POWERLINE_GIT_CLEAN" = "" ]; then
+
+
+
+function setprompts {
+  prompt_sorin_pwd
+
+  POWERLINE_USER_NAME="%n"
+
+  if [ "$POWERLINE_GIT_CLEAN" = "" ]; then
   POWERLINE_GIT_CLEAN="✔"
 fi
 
@@ -66,14 +86,6 @@ fi
 
 if [ "$POWERLINE_GIT_UNMERGED" = "" ]; then
   POWERLINE_GIT_UNMERGED="═"
-fi
-
-if [ "$POWERLINE_RIGHT_A_COLOR_FRONT" = "" ]; then
-  POWERLINE_RIGHT_A_COLOR_FRONT="white"
-fi
-
-if [ "$POWERLINE_RIGHT_A_COLOR_BACK" = "" ]; then
-  POWERLINE_RIGHT_A_COLOR_BACK="black"
 fi
 
 ZSH_THEME_GIT_PROMPT_PREFIX=" \ue0a0 "
@@ -123,19 +135,24 @@ if [ "$POWERLINE_DETECT_SSH" != "" ]; then
     POWERLINE_SEC1_TXT=%F{white}
   fi
 fi
-PROMPT="$POWERLINE_SEC1_BG$POWERLINE_SEC1_TXT $POWERLINE_USER_NAME %k%f$POWERLINE_SEC1_FG%K{blue}"$'\ue0b0'"%k%f%F{white}%K{blue} "$POWERLINE_CURRENT_PATH"%F{blue}"$POWERLINE_GIT_INFO_LEFT" %k"$'\ue0b0'"%f  "
+PROMPT="$POWERLINE_SEC1_BG$POWERLINE_SEC1_TXT $POWERLINE_USER_NAME %k%f$POWERLINE_SEC1_FG%K{blue}"$'\ue0b0'"%k%f%F{white}%K{blue} "$_prompt_sorin_pwd"%F{blue}"$POWERLINE_GIT_INFO_LEFT" %k"$'\ue0b0'"%f "
 
 if [ "$POWERLINE_NO_BLANK_LINE" = "" ]; then
     PROMPT="
 "$PROMPT
 fi
 
-if [ "$POWERLINE_DISABLE_RPROMPT" = "" ]; then
-    if [ "$POWERLINE_RIGHT_A" = "" ]; then
-        RPROMPT=" $POWERLINE_GIT_INFO_RIGHT%F{white}"$'\ue0b2'"%k%F{black}%K{white} $POWERLINE_RIGHT_B %f%k"
-    elif [ "$POWERLINE_RIGHT_B" = "" ]; then
-        RPROMPT=" $POWERLINE_GIT_INFO_RIGHT%F{white}"$'\ue0b2'"%k%F{$POWERLINE_RIGHT_A_COLOR_FRONT}%K{$POWERLINE_RIGHT_A_COLOR_BACK} $POWERLINE_RIGHT_A %f%k"
-    else
-        RPROMPT=" $POWERLINE_GIT_INFO_RIGHT%F{white}"$'\ue0b2'"%k%F{black}%K{white} $POWERLINE_RIGHT_B %f%F{$POWERLINE_RIGHT_A_COLOR_BACK}"$'\ue0b2'"%f%k%K{$POWERLINE_RIGHT_A_COLOR_BACK}%F{$POWERLINE_RIGHT_A_COLOR_FRONT} $POWERLINE_RIGHT_A %f%k"
-    fi
+POWERLINE_RIGHT_B=$(rvm_info_for_prompt)
+
+if [ "$POWERLINE_RIGHT_A" = "" ]; then
+    RPROMPT="$POWERLINE_GIT_INFO_RIGHT%F{white}"$'\ue0b2'"%k%F{black}%K{white} $POWERLINE_RIGHT_B %f%k"
+elif [ "$POWERLINE_RIGHT_B" = "" ]; then
+    RPROMPT="$POWERLINE_GIT_INFO_RIGHT%F{white}"$'\ue0b2'"%k%F{240}%K{white} $POWERLINE_RIGHT_A %f%k"
+else
+    RPROMPT="$POWERLINE_GIT_INFO_RIGHT%F{white}"$'\ue0b2'"%k%F{black}%K{white} $POWERLINE_RIGHT_B %f%F{240}"$'\ue0b2'"%f%k%K{240}%F{255} $POWERLINE_RIGHT_A %f%k"
 fi
+}
+
+add-zsh-hook precmd setprompts
+
+
